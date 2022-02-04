@@ -14,137 +14,107 @@
  * limitations under the License.
  */
 'use-strict';
-import React, {Component} from 'react';
-import PropTypes from 'prop-types';
-import {connect} from 'react-redux';
-import {bindActionCreators} from 'redux';
-import * as productActions from './product-actions';
+import React, { useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate, useLocation } from "react-router-dom";
+import * as actions from './product-actions';
 import fuLogger from '../../core/common/fu-logger';
 import ProductView from '../../memberView/ec_product/product-view';
 import ProductModifyView from '../../memberView/ec_product/product-modify-view';
 import BaseContainer from '../../core/container/base-container';
 
 
-class ECProductContainer extends BaseContainer {
-	constructor(props) {
-		super(props);
-	}
+function ECProductContainer() {
+	const itemState = useSelector((state) => state.ecproduct);
+	const session = useSelector((state) => state.session);
+	const appPrefs = useSelector((state) => state.appPrefs);
+	const dispatch = useDispatch();
+	const location = useLocation();
+	const navigate = useNavigate();
 
-	componentDidMount() {
-		this.props.actions.init({lang:this.props.session.selected.lang});
+	useEffect(() => {
+		dispatch(actions.init());
+	}, []);
+	
+	const onListLimitChange = (fieldName,event) => {
+		BaseContainer.onListLimitChange({state:itemState,actions:actions,dispatch:dispatch,appPrefs:appPrefs,fieldName,event});
+	}
+	const onPaginationClick = (value) => {
+		BaseContainer.onPaginationClick({state:itemState,actions:actions,dispatch:dispatch,value});
+	}
+	const onSearchChange = (field,event) => {
+		BaseContainer.onSearchChange({state:itemState,actions:actions,dispatch:dispatch,field,event});
+	}
+	const onSearchClick = (fieldName,event) => {
+		BaseContainer.onSearchClick({state:itemState,actions:actions,dispatch:dispatch,fieldName,event});
+	}
+	const inputChange = (type,field,value,event) => {
+		BaseContainer.inputChange({state:itemState,actions:actions,dispatch:dispatch,appPrefs:appPrefs,type,field,value,event});
+	}
+	const onOrderBy = (selectedOption, event) => {
+		BaseContainer.onOrderBy({state:itemState,actions:actions,dispatch:dispatch,appPrefs:appPrefs,selectedOption,event});
+	}
+	const onSave = () => {
+		BaseContainer.onSave({state:itemState,actions:actions,dispatch:dispatch,appPrefs:appPrefs,form:"EC_PRODUCT_FORM"});
+	}
+	const closeModal = () => {
+		BaseContainer.closeModal({actions:actions,dispatch:dispatch});
+	}
+	const onCancel = () => {
+		BaseContainer.onCancel({state:itemState,actions:actions,dispatch:dispatch});
+	}
+	const goBack = () => {
+		BaseContainer.goBack({navigate});
+	}
+	const onBlur = (field) => {
+		BaseContainer.onCancel({state:itemState,actions:actions,dispatch:dispatch,field});
 	}
 	
-	getState = () => {
-		return this.props.ecproduct;
-	}
 	
-	getForm = () => {
-		return "EC_PRODUCT_FORM";
-	}
-	
-	onOption = (code,item) => {
+	const onOption = (code,item) => {
 		fuLogger.log({level:'TRACE',loc:'ECProductContainer::onOption',msg:" code "+code});
-		if (this.onOptionBase(code,item)) {
+		if (BaseContainer.onOptionBase({state:itemState,actions:actions,dispatch:dispatch,code:code,appPrefs:appPrefs,item:item})) {
 			return;
 		}
 		
 		switch(code) {
 			case 'PROJECT': {
-				this.props.history.push({pathname:'/ec-project',state:{parent:item,parentType:"PRODUCT"}});
+				navigate('/ec-project',{state:{parent:item,parentType:"PRODUCT"}});
 				break;
 			}
 		}
 	}
-	
-	
-	onBlur = (field) => {
-		fuLogger.log({level:'TRACE',loc:'ECProductContainer::onBlur',msg:field.name});
-		let fieldName = field.name;
-		// get field and check what to do
-		if (field.optionalParams != ""){
-			let optionalParams = JSON.parse(field.optionalParams);
-			if (optionalParams.onBlur != null) {
-				if (optionalParams.onBlur.validation != null && optionalParams.onBlur.validation == "matchField") {
-					if (field.validation != "") {
-						let validation = JSON.parse(field.validation);
-						if (validation[optionalParams.onBlur.validation] != null && validation[optionalParams.onBlur.validation].id != null){
-							if (this.props.ecproduct.inputFields[validation[optionalParams.onBlur.validation].id] == this.props.ecproduct.inputFields[fieldName]) {
-								if (validation[optionalParams.onBlur.validation].successMsg != null) {
-									let successMap = this.state.successes;
-									if (successMap == null){
-										successMap = {};
-									}
-									successMap[fieldName] = validation[optionalParams.onBlur.validation].successMsg;
-									this.setState({successes:successMap, errors:null});
-								}
-							} else {
-								if (validation[optionalParams.onBlur.validation].failMsg != null) {
-									let errorMap = this.state.errors;
-									if (errorMap == null){
-										errorMap = {};
-									}
-									errorMap[fieldName] = validation[optionalParams.onBlur.validation].failMsg;
-									this.setState({errors:errorMap, successes:null});
-								}
-							}
-						}
-					}
-				} else if (optionalParams.onBlur.func != null) {
-					if (optionalParams.onBlur.func == "clearVerifyPassword"){
-						this.clearVerifyPassword();
-					}
-				}
-			}
-		}
-	}
 
-	render() {
-		fuLogger.log({level:'TRACE',loc:'ECProductContainer::render',msg:"Hi there"});
-		if (this.props.ecproduct.isModifyOpen) {
-			return (
-				<ProductModifyView
-				itemState={this.props.ecproduct}
-				appPrefs={this.props.appPrefs}
-				onSave={this.onSave}
-				onCancel={this.onCancel}
-				inputChange={this.inputChange}
-				onBlur={this.onBlur}/>
-			);
-		} else if (this.props.ecproduct.items != null) {
-			return (
-				<ProductView
-				itemState={this.props.ecproduct}
-				appPrefs={this.props.appPrefs}
-				onListLimitChange={this.onListLimitChange}
-				onSearchChange={this.onSearchChange}
-				onSearchClick={this.onSearchClick}
-				onPaginationClick={this.onPaginationClick}
-				onOrderBy={this.onOrderBy}
-				closeModal={this.closeModal}
-				onOption={this.onOption}
-				inputChange={this.inputChange}
-				session={this.props.session}
-				/>
-			);
-		} else {
-			return (<div> Loading... </div>);
-		}
+	fuLogger.log({level:'TRACE',loc:'ECProductContainer::render',msg:"Hi there"});
+	if (itemState.isModifyOpen) {
+		return (
+			<ProductModifyView
+			itemState={itemState}
+			appPrefs={appPrefs}
+			onSave={onSave}
+			onCancel={onCancel}
+			inputChange={inputChange}
+			onBlur={onBlur}/>
+		);
+	} else if (itemState.items != null) {
+		return (
+			<ProductView
+			itemState={itemState}
+			appPrefs={appPrefs}
+			onListLimitChange={onListLimitChange}
+			onSearchChange={onSearchChange}
+			onSearchClick={onSearchClick}
+			onPaginationClick={onPaginationClick}
+			onOrderBy={onOrderBy}
+			closeModal={closeModal}
+			onOption={onOption}
+			inputChange={inputChange}
+			session={session}
+			/>
+		);
+	} else {
+		return (<div> Loading... </div>);
 	}
 }
 
-ECProductContainer.propTypes = {
-	appPrefs: PropTypes.object,
-	actions: PropTypes.object,
-	ecproduct: PropTypes.object,
-	session: PropTypes.object
-};
-
-function mapStateToProps(state, ownProps) {
-  return {appPrefs:state.appPrefs, ecproduct:state.ecproduct, session:state.session};
-}
-
-function mapDispatchToProps(dispatch) {
-  return { actions:bindActionCreators(productActions,dispatch) };
-}
-
-export default connect(mapStateToProps,mapDispatchToProps)(ECProductContainer);
+export default ECProductContainer;
